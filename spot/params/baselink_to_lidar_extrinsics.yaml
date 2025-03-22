@@ -1,0 +1,15 @@
+# Distances in cms, angles in degrees
+# This is the (hypothetical) lidar with aligned axes and right above baselink (matches with velodyne manager's tf frame publication)
+T1:
+  Trans1:
+    X: 0
+    Y: 0
+    Z: 85
+T2:
+  # Extrinsic (space-fixed) rotation
+  Rot1:
+    axis: "Y"
+    alpha: 0.0
+  Rot2:
+    axis: "Z"
+    alpha: 0.0
