@@ -1,5 +1,5 @@
 """
-Jackal frames description: Assume you are watching the robot head on, with the robot facing you.
+Spot frames description: Assume you are watching the robot head on, with the robot facing you.
 - Frame 1: World Coordinate System (WCS) / base_link
     At the robot body center but on ground (though attached to robot, so moves with robot)
     +X: Forward of the robot (towards you)
@@ -29,7 +29,13 @@ Additional info:
     - M_int is constant for a given camera
     - You should NOT directly do M_int multiplication as shown above, but instead use cv2.projectPoints as it takes into account the distortion coefficients as well
     - Sometimes, M_perp * M_ext is combined into a single matrix, called the extrinsic matrix, where then it is (3 x 4) extrinsic matrix
-    - (Corrected) lidar frame is such that it only has z displacement from base_link
+    - The velodyne frame and base_link frame have a z offset of 0.85 meters, with everything else same:
+        * velodyne frame is 0.85 meters above base_link frame
+        * base_link is located at velodyne's center point, but on ground
+    - Map frame: The map frame is the world fixed frame
+    - odom frame: TODO
+    - Spot's VLP16 gives 6 data values for each point in pointcloud: x, y, z, intensity, ring, time
+    - NOTE: The lidar gives pointcloud (/velodyne_points) is slightly diff frame than velodyne frame. So use /corrected_velodyne_points for pc in velodyne frame (ie, 0.85 m above base_link)
 """
 
 import cv2
@@ -41,9 +47,9 @@ from copy import deepcopy
 from homography import Homography
 
 
-def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=540):
+def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=1536):
     if override_intrinsics_filepath is None:
-        intrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"params/zed_left_rect_intrinsics_{cam_res}.yaml")
+        intrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"params/cam_intrinsics_{cam_res}.yaml")
     else:
         intrinsics_filepath = override_intrinsics_filepath
 
@@ -60,7 +66,7 @@ def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=540):
 
 def get_cam_ext_dict(override_extrinsics_filepath=None):
     if override_extrinsics_filepath is None:
-        extrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "params/baselink_to_zed_left_extrinsics.yaml")
+        extrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "params/baselink_to_cam_extrinsics.yaml")
     else:
         extrinsics_filepath = override_extrinsics_filepath
 
@@ -80,9 +86,9 @@ def compute_cam_ext_T(cam_ext_dict):
     # Transforms from Intermediate frame to CCS
     T2 = Homography.get_std_rot(axis=cam_ext_dict['T23']['R1']['axis'],
                                 alpha=np.deg2rad(cam_ext_dict['T23']['R1']['alpha']))
-    T3 = Homography.get_std_rot(axis=cam_ext_dict['T23']['R2']['axis'],
-                                alpha=np.deg2rad(cam_ext_dict['T23']['R2']['alpha']))
-    T4 = np.array(cam_ext_dict['T23']['R3'])
+    T3 = np.array(cam_ext_dict['T23']['R2'])
+    T4 = Homography.get_std_rot(axis=cam_ext_dict['T23']['R3']['axis'],
+                                alpha=np.deg2rad(cam_ext_dict['T23']['R3']['alpha']))
     T5 = Homography.get_std_rot(axis=cam_ext_dict['T23']['R4']['axis'],
                                 alpha=np.deg2rad(cam_ext_dict['T23']['R4']['alpha']))
     return T5 @ T4 @ T3 @ T2 @ T1
@@ -121,9 +127,7 @@ def compute_lidar_ext_T(lidar_ext_dict):
                                 alpha=np.deg2rad(lidar_ext_dict['T2']['Rot1']['alpha']))
     T3 = Homography.get_std_rot(axis=lidar_ext_dict['T2']['Rot2']['axis'],
                                 alpha=np.deg2rad(lidar_ext_dict['T2']['Rot2']['alpha']))
-    T4 = Homography.get_std_rot(axis=lidar_ext_dict['T2']['Rot3']['axis'],
-                                alpha=np.deg2rad(lidar_ext_dict['T2']['Rot3']['alpha']))
-    return T4 @ T3 @ T2 @ T1
+    return (T2 @ T3) @ T1
 
 
 def compute_lidar_actual_ext_T(lidar_ext_dict):
@@ -137,6 +141,4 @@ def compute_lidar_actual_ext_T(lidar_ext_dict):
                                 alpha=np.deg2rad(lidar_ext_dict['T2']['Rot1']['alpha']))
     T3 = Homography.get_std_rot(axis=lidar_ext_dict['T2']['Rot2']['axis'],
                                 alpha=np.deg2rad(lidar_ext_dict['T2']['Rot2']['alpha']))
-    T4 = Homography.get_std_rot(axis=lidar_ext_dict['T2']['Rot3']['axis'],
-                                alpha=np.deg2rad(lidar_ext_dict['T2']['Rot3']['alpha']))
-    return T4 @ T3 @ T2 @ T1
+    return (T2 @ T3) @ T1

@@ -9,10 +9,11 @@ from homography import Homography
 
 
 class CamCalib:
-    def __init__(self, override_intrinsics_filepath=None, override_extrinsics_filepath=None, robotname="jackal"):
+    def __init__(self, override_intrinsics_filepath=None, override_extrinsics_filepath=None, robotname="jackal", cam_res=540):
         self.override_intrinsics_filepath = override_intrinsics_filepath
         self.override_extrinsics_filepath = override_extrinsics_filepath
         self.robotname = robotname
+        self.cam_res = cam_res
         self.load_params()
 
     def load_params(self):
@@ -21,7 +22,7 @@ class CamCalib:
         elif self.robotname == "spot":
             from spot.ret_mats import get_cam_int_dict, get_cam_ext_dict, compute_cam_ext_T
 
-        self.intrinsics_dict = get_cam_int_dict(self.override_intrinsics_filepath)
+        self.intrinsics_dict = get_cam_int_dict(self.override_intrinsics_filepath, self.cam_res)
         self.img_height = self.intrinsics_dict['height']
         self.img_width = self.intrinsics_dict['width']
         self.extrinsics_dict = get_cam_ext_dict(self.override_extrinsics_filepath)
