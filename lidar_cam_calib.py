@@ -45,9 +45,9 @@ class LidarCamCalib:
               (0.8462, 0, 0), (0.7692, 0, 0),
               (0.6923, 0, 0), (0.6154, 0, 0)]
 
-    def __init__(self, ros_flag=True, override_cam_intrinsics_filepath=None, override_cam_extrinsics_filepath=None, robotname="jackal", override_lidar_extrinsics_filepath=None, override_lidar_actual_extrinsics_filepath=None):
+    def __init__(self, ros_flag=True, override_cam_intrinsics_filepath=None, override_cam_extrinsics_filepath=None, robotname="jackal", override_lidar_extrinsics_filepath=None, override_lidar_actual_extrinsics_filepath=None, cam_res=540):
         self.ros_flag = ros_flag
-        self.cam_calib = CamCalib(override_intrinsics_filepath=override_cam_intrinsics_filepath, override_extrinsics_filepath=override_cam_extrinsics_filepath, robotname=robotname)
+        self.cam_calib = CamCalib(override_intrinsics_filepath=override_cam_intrinsics_filepath, override_extrinsics_filepath=override_cam_extrinsics_filepath, robotname=robotname, cam_res=cam_res)
         self.robotname = robotname
         self.override_lidar_extrinsics_filepath = override_lidar_extrinsics_filepath
         self.override_lidar_actual_extrinsics_filepath = override_lidar_actual_extrinsics_filepath
@@ -271,7 +271,7 @@ class LidarCamCalib:
 
 if __name__ == "__main__":
     rospy.init_node('lidar_cam_calib_node', anonymous=False)
-    e = LidarCamCalib(robotname="jackal", ros_flag=True)
+    e = LidarCamCalib(robotname="jackal", ros_flag=True, cam_res=540)
     time.sleep(1)
     try:
         rospy.spin()

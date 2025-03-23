@@ -9,26 +9,26 @@ from depth2points import D2P
 
 
 class EgoToBEV:
-    def __init__(self, robotname="jackal", depth_encoder='vitl', depth_dataset='hypersim'):
+    def __init__(self, robotname="jackal", depth_encoder='vitl', depth_dataset='hypersim', cam_res=540):
         self.robotname = robotname
-        self.lidar_cam = LidarCamCalib(ros_flag=False, robotname=robotname)
-        self.bev_lidar_cam = LidarCamCalib(ros_flag=False, robotname=robotname, override_cam_extrinsics_filepath=os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{robotname}/params/bev_cam_extrinsics.yaml"))
-        self.d2p = D2P(robotname=robotname, depth_encoder=depth_encoder, depth_dataset=depth_dataset)
+        self.d2p = D2P(robotname=robotname, depth_encoder=depth_encoder, depth_dataset=depth_dataset, cam_res=cam_res)
+        # here below, I hardcoded jackal (the bev image there was much closer and zoomed in though less detailed as spot has higher res), but you can change to dynamic robotname if needed
+        self.bev_lidar_cam = LidarCamCalib(ros_flag=False, robotname="jackal", override_cam_extrinsics_filepath=os.path.join(os.path.dirname(os.path.realpath(__file__)), f"jackal/params/bev_cam_extrinsics.yaml"), cam_res=540)
 
     def get_bev(self, pil_img, pc_np, inpaint=True, use_depthpred=True, do_lidar_correction=True):
         pc_np = pc_np[:, :3]
         np_pil_img = np.array(pil_img)
         np_cv2_img = cv2.cvtColor(np_pil_img, cv2.COLOR_RGB2BGR)
         if do_lidar_correction:
-            pc_np = self.lidar_cam._correct_pc(pc_np)
+            pc_np = self.d2p.lcc._correct_pc(pc_np)
         if use_depthpred:
             pc_np, _ = self.d2p.main(np_cv2_img, pc_np, do_lidar_correction=False)
 
         all_ys, all_xs = np.meshgrid(np.arange(pil_img.height), np.arange(pil_img.width))
         all_pixel_locs = np.stack((all_xs.flatten(), all_ys.flatten()), axis=-1)  # K x 2
-        _, all_vlp_coords, _, _, interp_mask = self.lidar_cam.projectPCtoImageFull(pc_np, np_cv2_img, do_nearest=False)
+        _, all_vlp_coords, _, _, interp_mask = self.d2p.lcc.projectPCtoImageFull(pc_np, np_cv2_img, do_nearest=False)
         all_pixel_locs = all_pixel_locs[interp_mask]
-        bev_np_pil_img = np.zeros_like(np_pil_img)
+        bev_np_pil_img = np.zeros((self.bev_lidar_cam.img_height, self.bev_lidar_cam.img_width, 3), dtype=np.uint8)
         bev_pixel_locs, bev_mask, _ = self.bev_lidar_cam.projectVLPtoPCS(all_vlp_coords)
 
         all_pixel_locs = all_pixel_locs[bev_mask]
@@ -45,15 +45,14 @@ class EgoToBEV:
 
 
 if __name__ == "__main__":
-    raw_pil_img = Image.open("/home/dynamo/AMRL_Research/repos/synapse/test/000000.png")
-    pc_np = np.fromfile("/home/dynamo/AMRL_Research/repos/synapse/test/000000.bin", dtype=np.float32).reshape((-1, 4))
-    ego_to_bev = EgoToBEV()
+    raw_pil_img = Image.open("/home/dynamo/Music/metric_depthany2_calib/test/img.png")
+    pc_np = np.fromfile("/home/dynamo/Music/metric_depthany2_calib/test/pc_np.bin", dtype=np.float32).reshape((-1, 3))
 
     f, axs = plt.subplots(1, 2)
     f.set_figheight(30)
     f.set_figwidth(50)
-    axs[0].set_title("BEV hypersim", {'fontsize': 40})
-    axs[0].imshow(EgoToBEV(depth_dataset='hypersim').get_bev(raw_pil_img, pc_np, use_depthpred=True))
-    axs[1].set_title("BEV vkitti", {'fontsize': 40})
-    axs[1].imshow(EgoToBEV(depth_dataset='vkitti').get_bev(raw_pil_img, pc_np, use_depthpred=True))
+    axs[0].set_title("Raw", {'fontsize': 40})
+    axs[0].imshow(raw_pil_img)
+    axs[1].set_title("BEV", {'fontsize': 40})
+    axs[1].imshow(EgoToBEV(depth_dataset='hypersim', robotname="spot", cam_res=1536).get_bev(raw_pil_img, pc_np, use_depthpred=True))  # vkitti much better than hypersim outdoors
     plt.show()

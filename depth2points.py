@@ -11,8 +11,8 @@ from depthany2.metric_main import DepthAny2
 
 
 class D2P:
-    def __init__(self, robotname="jackal", device=None, depth_encoder='vitl', depth_dataset='hypersim'):
-        self.lcc = LidarCamCalib(ros_flag=False, robotname=robotname)
+    def __init__(self, robotname="jackal", device=None, depth_encoder='vitl', depth_dataset='hypersim', cam_res=540):
+        self.lcc = LidarCamCalib(ros_flag=False, robotname=robotname, cam_res=cam_res)
         self.DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu") if device is None else device
         self.depth_obj = DepthAny2(device=self.DEVICE, model_input_size=518, max_depth=1, encoder=depth_encoder, dataset=depth_dataset)
 
