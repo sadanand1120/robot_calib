@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# MESSY, NEEDS CLEANING
+
 import cv2
 import numpy as np
 import os
@@ -7,9 +9,6 @@ import glob
 import yaml
 from checkerboard import detect_checkerboard
 import argparse
-
-
-# add args for images_dir, save_calib, mode, view_mode, score_threshold, checkerboard size
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--images_dir", default="/home/dynamo/AMRL_Research/repos/spot_calib/3072", type=str, help="Directory containing images")

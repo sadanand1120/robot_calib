@@ -1,14 +1,10 @@
-# system
+# DONE
 import os
 import argparse
 import signal
 import time
 import sys
-
-# images
 import cv2
-
-# ros
 from cv_bridge import CvBridge
 import rosbag
 
