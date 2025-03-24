@@ -39,6 +39,7 @@ import yaml
 import math
 from copy import deepcopy
 from homography import Homography
+from collections import OrderedDict
 
 
 def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=540):
@@ -86,6 +87,28 @@ def compute_cam_ext_T(cam_ext_dict):
     T5 = Homography.get_std_rot(axis=cam_ext_dict['T23']['R4']['axis'],
                                 alpha=np.deg2rad(cam_ext_dict['T23']['R4']['alpha']))
     return T5 @ T4 @ T3 @ T2 @ T1
+
+
+def compute_parameterized_cam_ext_T(xcm, ycm, zcm, r1deg, r2deg, r4deg):
+    cam_ext_dict = get_cam_ext_dict()
+    cam_ext_dict['T12']['T1']['X'] = xcm
+    cam_ext_dict['T12']['T1']['Y'] = ycm
+    cam_ext_dict['T12']['T1']['Z'] = zcm
+    cam_ext_dict['T23']['R1']['alpha'] = r1deg
+    cam_ext_dict['T23']['R2']['alpha'] = r2deg
+    cam_ext_dict['T23']['R4']['alpha'] = r4deg
+    return compute_cam_ext_T(cam_ext_dict)
+
+
+def get_parameters_cam_ext_T(cam_ext_dict):
+    return OrderedDict({
+        "xcm": cam_ext_dict['T12']['T1']['X'],
+        "ycm": cam_ext_dict['T12']['T1']['Y'],
+        "zcm": cam_ext_dict['T12']['T1']['Z'],
+        "r1deg": cam_ext_dict['T23']['R1']['alpha'],
+        "r2deg": cam_ext_dict['T23']['R2']['alpha'],
+        "r4deg": cam_ext_dict['T23']['R4']['alpha']
+    })
 
 
 def get_lidar_ext_dict(override_extrinsics_filepath=None):

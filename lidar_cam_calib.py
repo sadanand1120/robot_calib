@@ -135,8 +135,10 @@ class LidarCamCalib:
         if isinstance(corresponding_dists, np.ndarray):
             corresponding_dists = list(corresponding_dists.squeeze())
         colors = LidarCamCalib.get_depth_colors(corresponding_dists)
+        radius = int(4 * img.shape[0] / 1536)
+        radius = radius if radius > 0 else 1
         for i in range(corresponding_pcs_coords.shape[0]):
-            cv2.circle(img2, tuple(corresponding_pcs_coords[i, :].astype(np.int32)), radius=1, color=colors[i], thickness=-1)
+            cv2.circle(img2, tuple(corresponding_pcs_coords[i, :].astype(np.int32)), radius=radius, color=colors[i], thickness=-1)
         if resize:
             img2 = cv2.resize(img2, None, fx=0.75, fy=0.75)
         return img2
