@@ -35,14 +35,14 @@ def save_all_images_and_pcs(bag_filepath, rootdir, image_topic='/camera/rgb/imag
                 cv2.imwrite(os.path.join(img_dir, f"{ts}.png"), img)
             elif topic == pc_topic:
                 pc = ros_numpy.point_cloud2.pointcloud2_to_array(msg).reshape(-1)
-                pc_arr = np.column_stack((pc['x'], pc['y'], pc['z'], pc['intensity'])).astype(np.float32).reshape((-1, 4))
+                pc_arr = np.column_stack((pc['x'], pc['y'], pc['z'])).astype(np.float32).reshape((-1, 3))
                 pc_arr.tofile(os.path.join(bin_dir, f"{ts}.bin"))
 
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--bagfile", type=str, required=True, help="Path to the rosbag file")
-    arg_parser.add_argument("--rootdir", type=str, default=None, help="Directory to save images and pcs")
+    arg_parser.add_argument("--rootdir", type=str, default=None, help="Directory to save images and pcs; default is same as bagfile")
     arg_parser.add_argument("--imgtopic", type=str, default='/camera/rgb/image_raw', help="Image topic name")
     arg_parser.add_argument("--pctopic", type=str, default='/velodyne_points', help="Pointcloud topic name")
     args = arg_parser.parse_args()
