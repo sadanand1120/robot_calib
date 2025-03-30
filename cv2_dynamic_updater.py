@@ -1,4 +1,7 @@
-# DONE
+"""
+Template/demo file on how to dynamically update a circle on an image using OpenCV.
+"""
+
 import cv2
 import numpy as np
 import time

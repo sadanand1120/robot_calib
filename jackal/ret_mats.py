@@ -42,9 +42,15 @@ from homography import Homography
 from collections import OrderedDict
 
 
-def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=540):
+def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=540, ret_raw=False):
+    """
+    ret_raw: whether to return the raw camera intrinsics or the rectified camera intrinsics
+    """
     if override_intrinsics_filepath is None:
-        intrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"params/zed_left_rect_intrinsics_{cam_res}.yaml")
+        if ret_raw:
+            intrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"params/raw/zed_left_rect_intrinsics_{cam_res}.yaml")
+        else:
+            intrinsics_filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"params/zed_left_rect_intrinsics_{cam_res}.yaml")
     else:
         intrinsics_filepath = override_intrinsics_filepath
 

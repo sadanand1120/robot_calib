@@ -69,33 +69,24 @@ def write_o3d_camera_params(pcd_path, jsonpath):
     vis.destroy_window()
 
 
-def get_pcd_from_image_depth_prediction(imgpath, robotname, depth_dataset, scalefac=1.0, lidar_pc_np_xyz=None):
+def get_pcd_from_image_depth_prediction(imgpath, robotname, depth_dataset, cam_res, scalefac=1.0, lidar_pc_np_xyz=None):
+    d2p = D2P(robotname=robotname, depth_dataset=depth_dataset, cam_res=cam_res)
     cv2_img = cv2.imread(imgpath)
-    pil_img = PIL.Image.fromarray(cv2_img)
-    d2p = D2P(robotname=robotname, depth_dataset=depth_dataset, cam_res=cv2_img.shape[0])
+    cv2_img = d2p.lcc.cam_calib.rectifyRawCamImage(cv2_img)
     pc_np_xyz, depth_rel_img = d2p.main(cv2_img, lidar_pc_np_xyz)
     pc_np_xyz[:, :3] *= scalefac
     pcd = pcd_from_np(pc_np_xyz)
-    pcd.colors = get_pcd_colors_from_image(pil_img)
+    pcd.colors = get_pcd_colors_from_image(PIL.Image.fromarray(cv2_img))
     return pcd, depth_rel_img
 
 
 if __name__ == "__main__":
-    lidar_pc_np_xyz = np.fromfile("/home/dynamo/AMRL_Research/repos/robot_calib/notrack_bags/1536_board/pcs/1742354025247450113.bin", dtype=np.float32).reshape((-1, 3))
-    lidar_pcd = pcd_from_np(lidar_pc_np_xyz)
-    pcd, depth_rel_img = get_pcd_from_image_depth_prediction(imgpath="/home/dynamo/AMRL_Research/repos/robot_calib/notrack_bags/1536_board/images/1742354026490829136.png",
+    pcd, depth_rel_img = get_pcd_from_image_depth_prediction(imgpath="notrack_bags/paths/poc_cut/images/1742591008774347085.png",
                                                              robotname="spot",
-                                                             depth_dataset="hypersim",
+                                                             depth_dataset="vkitti",
+                                                             cam_res=3072,
                                                              scalefac=1.0,
-                                                             lidar_pc_np_xyz=lidar_pc_np_xyz)
-    # plt.imshow(depth_rel_img)
-    # plt.show()
-    # visualize_pcd(pcd, camera_params_jsonpath=None, point_size=0.75)
-
-    vis, ctr = init_vis(point_size=0.85)
-    vis.add_geometry(pcd)
-    vis.add_geometry(lidar_pcd)
-    vis.poll_events()
-    vis.update_renderer()
-    vis.run()    # keeping the visualization window open until the user closes it
-    vis.destroy_window()
+                                                             lidar_pc_np_xyz=None)
+    plt.imshow(depth_rel_img)
+    plt.show()
+    visualize_pcd(pcd, camera_params_jsonpath=None, point_size=0.75)

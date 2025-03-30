@@ -1,4 +1,6 @@
+
 {
     "image_topic": "/camera/rgb/image_raw",
-    "lidar_topic": "/velodyne_points"
+    "lidar_topic": "/velodyne_points",
+    "lidar_t_image_synctime_delta_ms": 585
 }

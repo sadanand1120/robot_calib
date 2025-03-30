@@ -10,7 +10,7 @@ T12:
 T23:
   R1:
     axis: "Y"
-    alpha: 11
+    alpha: 10.5
   R2: # two rotations basically
     - [0, -1, 0, 0]
     - [0, 0, -1, 0]

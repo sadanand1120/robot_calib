@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Filters pointcloud and publishes the filtered pc
+# Debugging utility: Filters pointcloud and publishes the filtered pc
 import rospy
 from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2

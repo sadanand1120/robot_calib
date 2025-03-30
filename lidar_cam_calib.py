@@ -67,7 +67,8 @@ class LidarCamCalib:
         rospy.Timer(rospy.Duration(1 / 10), lambda event: self.main(self.latest_img, self.latest_vlp_points))
 
     def image_callback(self, msg):
-        self.latest_img = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        latest_img = self.cv_bridge.compressed_imgmsg_to_cv2(msg, desired_encoding="passthrough")
+        self.latest_img = self.cam_calib.rectifyRawCamImage(latest_img)
 
         camera_info_msg = CameraInfo()
         camera_info_msg.header.stamp = rospy.Time.now()
@@ -127,7 +128,7 @@ class LidarCamCalib:
     @staticmethod
     def plot_points_on_image(img, corresponding_dists, corresponding_pcs_coords, resize=False):
         """
-        img: cv2 image (BGR) to plot on
+        img: rectified cv2 image (BGR) to plot on
         corresponding_dists: a list of distances / 1d np array of distances
         corresponding_pcs_coords: N x 2 pixel coordinates corresponding to the distances
         """
@@ -201,7 +202,7 @@ class LidarCamCalib:
 
     def projectVLPtoPCS(self, vlp_points, mode="skip", ret_zs=False):
         """
-        Project VLP points to PCS
+        Project VLP points to PCS (rectified)
         vlp_points: (N x 3) numpy array of points in VLP frame
         Returns: (N x 2) numpy array of points in PCS, in FOV of image, and a mask to indicate which ccs locs were preserved during pixel FOV bounding
         """
@@ -218,7 +219,7 @@ class LidarCamCalib:
 
     def projectPCtoImage(self, pc_np, img):
         """
-        img: (H x W x 3) numpy array, cv2 based (BGR)
+        img: (H x W x 3) numpy array, rectified cv2 based (BGR)
         pc_np: (N x 3) numpy array of points in VLP frame
         """
         pcs_coords, mask, ccs_dists = self.projectVLPtoPCS(pc_np)
@@ -227,7 +228,7 @@ class LidarCamCalib:
 
     def projectPCtoImageFull(self, pc_np, img, ret_imgs=False, do_nearest=True, firstmethod="linear", resize=True):
         """
-        img: (H x W x 3) numpy array, cv2 based (BGR)
+        img: (H x W x 3) numpy array, rectified cv2 based (BGR)
         pc_np: (N x 3) numpy array of points in VLP frame
         """
         _, corresponding_pcs_coords, corresponding_vlp_coords, corresponding_ccs_dists = self.projectPCtoImage(pc_np, img)
@@ -257,7 +258,7 @@ class LidarCamCalib:
 
     def main(self, img, vlp_points, event=None):
         """
-        img: (H x W x 3) numpy array, cv2 based (BGR)
+        img: (H x W x 3) numpy array, rectified cv2 based (BGR)
         vlp_points: (N x 3) numpy array of points in (by deafult, corrected) VLP frame
         """
         if vlp_points is None or img is None:

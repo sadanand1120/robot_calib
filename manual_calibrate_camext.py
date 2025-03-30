@@ -1,3 +1,7 @@
+"""
+Script to manually tweak the camera extrinsics parameters using a static (i.e., robot not moving) bag file.
+"""
+
 from cv_bridge import CvBridge
 import numpy as np
 import cv2
@@ -14,10 +18,10 @@ from pprint import pprint
 
 # **************************************************************
 # Parameters
+STATIC_BAGFILE = "/home/dynamo/AMRL_Research/repos/robot_calib/notrack_bags/1536_board.bag"
 ROBOTNAME = "spot"
 IMG_RES = 1536
 LCC = LidarCamCalib(ros_flag=False, robotname=ROBOTNAME, cam_res=IMG_RES)
-STATIC_BAGFILE = "/home/dynamo/Music/metric_depthany2_calib/notrack_bags/1536_board.bag"
 # actual bounds are -100 to 100 cms, and -180 to 180 degrees
 # cv2 bounds are 0 to 200, and 0 to 360 degrees
 # **************************************************************
@@ -93,6 +97,7 @@ elif ROBOTNAME == "spot":
     from spot.ret_mats import *
 
 cv2_img, pc_np_xyz = get_first_image_and_pc(STATIC_BAGFILE, image_topic=ROBOTINFO_DICT["image_topic"], pc_topic=ROBOTINFO_DICT["lidar_topic"])
+cv2_img = LCC.cam_calib.rectifyRawCamImage(cv2_img)
 pc_np_xyz = LCC._correct_pc(pc_np_xyz)
 parameters_dict = get_parameters_cam_ext_T(LCC.cam_calib.extrinsics_dict)
 parameters_keys = list(parameters_dict.keys())
@@ -115,7 +120,7 @@ parameters_dict[parameters_keys[2]] = cv2_val_to_actual_cm(cv2.getTrackbarPos('T
 parameters_dict[parameters_keys[3]] = cv2_val_to_actual_deg(cv2.getTrackbarPos('R0', 'MyImage'))
 parameters_dict[parameters_keys[4]] = cv2_val_to_actual_deg(cv2.getTrackbarPos('R1', 'MyImage'))
 parameters_dict[parameters_keys[5]] = cv2_val_to_actual_deg(cv2.getTrackbarPos('R2', 'MyImage'))
-print("Updated parameters:")
+print("Updated parameters: *NEED TO STORE MANUALLY IF YOU WANT TO KEEP THEM*")
 pprint(parameters_dict)
 
 cv2.destroyAllWindows()

@@ -22,17 +22,7 @@ class D2P:
         FY = cam_intrinsics_dict['camera_matrix'][1, 1]
         CX = cam_intrinsics_dict['camera_matrix'][0, 2]
         CY = cam_intrinsics_dict['camera_matrix'][1, 2]
-        K = cam_intrinsics_dict['camera_matrix']
-        d = cam_intrinsics_dict['dist_coeffs']
-        R = np.eye(3)
         x, y = np.meshgrid(np.arange(depth_arr_img.shape[1]), np.arange(depth_arr_img.shape[0]))
-        # undistort pixel coordinates
-        pcs_coords = np.stack((x.flatten(), y.flatten()), axis=-1).astype(np.float64)
-        undistorted_pcs_coords = cv2.undistortPoints(pcs_coords.reshape(1, -1, 2), K, d, R=R, P=K)
-        undistorted_pcs_coords = np.swapaxes(undistorted_pcs_coords, 0, 1).squeeze().reshape((-1, 2))
-        x, y = np.split(undistorted_pcs_coords, 2, axis=1)
-        x = x.reshape(depth_arr_img.shape[0], depth_arr_img.shape[1])
-        y = y.reshape(depth_arr_img.shape[0], depth_arr_img.shape[1])
         # back project (along the camera ray) the pixel coordinates to 3D using the depth
         x = (x - CX) / FX
         y = (y - CY) / FY
@@ -48,6 +38,7 @@ class D2P:
     @torch.inference_mode()
     def main(self, cv2_img, pc_np_xyz=None, do_lidar_correction=True):
         """
+        cv2_img has to be rectified
         Pass pc_np_xyz as None if you do not want to do lidar based metric scaling
         """
         with torch.device(self.DEVICE):
@@ -67,8 +58,8 @@ class D2P:
 
 if __name__ == "__main__":
     d2p = D2P(robotname="jackal")
-    raw_pil_img = PILImage.open("/home/dynamo/AMRL_Research/repos/synapse/test/000000.png").convert("RGB")
-    cv2_img = cv2.cvtColor(np.asarray(raw_pil_img), cv2.COLOR_RGB2BGR)
+    cv2_img = cv2.imread("/home/dynamo/AMRL_Research/repos/synapse/test/000000.png")
+    cv2_img = d2p.lcc.cam_calib.rectifyRawCamImage(cv2_img)
     pc_np = np.fromfile("/home/dynamo/AMRL_Research/repos/synapse/test/000000.bin", dtype=np.float32).reshape((-1, 4))
     lidar_points, depth_arr = d2p.main(cv2_img, pc_np[:, :3], do_lidar_correction=True)
     flat_pc = lidar_points.reshape(-1).astype(np.float32)
