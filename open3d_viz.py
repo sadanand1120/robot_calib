@@ -76,7 +76,7 @@ def get_pcd_from_image_depth_prediction(imgpath, robotname, depth_dataset, cam_r
     pc_np_xyz, depth_rel_img = d2p.main(cv2_img, lidar_pc_np_xyz)
     pc_np_xyz[:, :3] *= scalefac
     pcd = pcd_from_np(pc_np_xyz)
-    pcd.colors = get_pcd_colors_from_image(PIL.Image.fromarray(cv2_img))
+    pcd.colors = get_pcd_colors_from_image(PIL.Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)))
     return pcd, depth_rel_img
 
 
