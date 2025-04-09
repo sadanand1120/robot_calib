@@ -1,5 +1,4 @@
 import os
-# os.environ["XFORMERS_DISABLED"] = "1" # Switch to enable xFormers
 from PIL import Image
 from sklearn.decomposition import PCA
 import torch
@@ -7,26 +6,9 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from lidar_cam_calib import LidarCamCalib
 import cv2
+from copy import deepcopy
 from dino_vit_extractor import ViTExtractor
-
-
-@torch.inference_mode()
-def run_pca(tokens, n_components):
-    pca = PCA(n_components=n_components)
-    pca.fit(tokens)
-    projected_tokens = pca.transform(tokens)
-    return projected_tokens
-
-
-@torch.inference_mode()
-def viz_pca3(projected_tokens, grid_size, orig_img_width, orig_img_height, resample=Image.NEAREST) -> Image:
-    t = torch.tensor(projected_tokens)
-    t_min = t.min(dim=0, keepdim=True).values
-    t_max = t.max(dim=0, keepdim=True).values
-    normalized_t = (t - t_min) / (t_max - t_min)
-    array = (normalized_t * 255).byte().numpy()
-    array = array.reshape(*grid_size, 3)
-    return Image.fromarray(array).resize((orig_img_width, orig_img_height), resample=resample)
+from clipdino_utils import run_pca, viz_pca3, resize_to_match_aspect_ratio, compute_new_dims
 
 
 class DinoV2:
@@ -57,12 +39,13 @@ class DinoV2:
         transform = self.get_transform(min(pil_img.size))
         image_tensor = transform(pil_img).to(self.DEVICE)
         height, width = image_tensor.shape[1:]  # C x H x W
+        assert height == pil_img.size[1] and width == pil_img.size[0], "Debug: Image size changed after transform"
         cropped_width, cropped_height = width - width % self.model.patch_size, height - height % self.model.patch_size
         image_tensor = image_tensor[:, :cropped_height, :cropped_width]
         grid_size = (cropped_height // self.model.patch_size, cropped_width // self.model.patch_size)  # h x w
         image_batch = image_tensor.unsqueeze(0)
         tokens = self.model.get_intermediate_layers(image_batch)[0].squeeze()  # (num_patches, dim) = (h*w, dim)
-        return tokens.cpu(), grid_size
+        return tokens.cpu(), grid_size, cropped_height, cropped_width
 
 
 if __name__ == "__main__":
@@ -75,25 +58,28 @@ if __name__ == "__main__":
 
         # using your minimal class
         dino = DinoV2("dinov2_vitb14")
-        tokens, grid_size = dino.get_patch_features(pil_img)
+        tokens, grid_size, cropped_h, cropped_w = dino.get_patch_features(pil_img)
         projected_tokens = run_pca(tokens, n_components=3)
-        img = viz_pca3(projected_tokens, grid_size, *pil_img.size)
+        img = viz_pca3(projected_tokens, grid_size, cropped_w, cropped_h)
         plt.imshow(img)
         plt.show()
 
         # using general class (from Distilled Feature Fields paper)
-        extractor = ViTExtractor(model_type='dinov2_vitb14', stride=None)  # DFF uses stride=4
-        image_batch, _ = extractor.preprocess(image_path=pil_img,
-                                              load_size=-1,  # DFF uses load_size 224
-                                              allow_crop=True)   # DFF uses allow_crop=False
+        # to make it 14 (patch size) divisible, without changing aspect ratio by much; needed when using DFF's parameters, to work properly with dinov2
+        # 224 is the input resolution for this visual encoder
+        # pil_img = resize_to_match_aspect_ratio(pil_img, target_ratio_tuple=compute_new_dims(orig_size=pil_img.size, short_side=224, round_multiple=14))
+        extractor = ViTExtractor(model_type='dinov2_vitb14', stride=None)  # DFF uses stride=4, and dino_vits8
+        image_batch, _, cropped_h, cropped_w = extractor.preprocess(image_path=pil_img,
+                                                                    load_size=-1,  # DFF uses load_size 224
+                                                                    allow_crop=True)   # DFF uses allow_crop=False
         descriptors = extractor.extract_descriptors(batch=image_batch,
                                                     layer=len(extractor.model.blocks) - 1,  # last layer
                                                     facet='token',  # DFF uses 'key'
-                                                    bin=False,  # DFF uses False
+                                                    bin=False,
                                                     include_cls=False)
         descriptors = descriptors.cpu().squeeze()
         projected_tokens = run_pca(descriptors, n_components=3)
-        img = viz_pca3(projected_tokens, grid_size, *pil_img.size)
+        img = viz_pca3(projected_tokens, extractor.num_patches, cropped_w, cropped_h)
         plt.imshow(img)
         plt.show()
 

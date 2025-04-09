@@ -12,6 +12,7 @@ import types
 from pathlib import Path
 from typing import Union, List, Tuple
 from PIL import Image
+from clipdino_utils import preprocess
 
 
 class ViTExtractor:
@@ -178,27 +179,14 @@ class ViTExtractor:
                     (1) the preprocessed image as a tensor to insert the model of shape BxCxHxW.
                     (2) the pil image in relevant dimensions
         """
-        if isinstance(image_path, str) or isinstance(image_path, Path):
-            pil_image = Image.open(image_path).convert('RGB')
-        elif isinstance(image_path, Image.Image):
-            pil_image = image_path.convert('RGB')
-        if load_size is not None:
-            if load_size == -1:
-                load_size = min(pil_image.size)
-            pil_image = transforms.Resize(load_size, interpolation=transforms.InterpolationMode.LANCZOS)(pil_image)
-        prep = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=self.mean, std=self.std)
-        ])
-        prep_img = prep(pil_image)
-
-        if allow_crop:
-            height, width = prep_img.shape[1:]  # C x H x W
-            cropped_width, cropped_height = width - width % self.p, height - height % self.p
-            prep_img = prep_img[:, :cropped_height, :cropped_width]
-
-        prep_img = prep_img[None, ...]
-        return prep_img, pil_image
+        return preprocess(
+            image_path=image_path,
+            load_size=load_size,
+            patch_size=self.p,
+            mean=self.mean,
+            std=self.std,
+            allow_crop=allow_crop
+        )
 
     def _get_hook(self, facet: str):
         """
