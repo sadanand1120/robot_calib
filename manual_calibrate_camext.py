@@ -81,7 +81,7 @@ def update_overlay(cv2img, pc_bin, lcc: LidarCamCalib):
     R0 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R0', 'MyImage'))
     R1 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R1', 'MyImage'))
     R2 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R2', 'MyImage'))
-    cam_M_ext = compute_parameterized_cam_ext_T(T0, T1, T2, R0, R1, R2)
+    cam_M_ext = param_loader.compute_parameterized_cam_extrinsics_transform(T0, T1, T2, R0, R1, R2)
     lcc.cam_calib.M_ext = cam_M_ext
     img_overlay, *_ = lcc.projectPCtoImage(pc_bin, img)
     img_overlay = cv2.resize(img_overlay, (1280, 720))
@@ -91,15 +91,13 @@ def update_overlay(cv2img, pc_bin, lcc: LidarCamCalib):
 with open(f"{ROBOTNAME}/info.json", "r") as f:
     ROBOTINFO_DICT = json.load(f)
 
-if ROBOTNAME == "jackal":
-    from jackal.ret_mats import *
-elif ROBOTNAME == "spot":
-    from spot.ret_mats import *
+from utils.param_loader import ParameterLoader
+param_loader = ParameterLoader(ROBOTNAME)
 
 cv2_img, pc_np_xyz = get_first_image_and_pc(STATIC_BAGFILE, image_topic=ROBOTINFO_DICT["image_topic"], pc_topic=ROBOTINFO_DICT["lidar_topic"])
 cv2_img = LCC.cam_calib.rectifyRawCamImage(cv2_img)
 pc_np_xyz = LCC._correct_pc(pc_np_xyz)
-parameters_dict = get_parameters_cam_ext_T(LCC.cam_calib.extrinsics_dict)
+parameters_dict = param_loader.get_camera_parameters(LCC.cam_calib.extrinsics_dict)
 parameters_keys = list(parameters_dict.keys())
 print("Initial parameters:")
 pprint(parameters_dict)

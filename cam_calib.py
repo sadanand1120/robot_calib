@@ -6,28 +6,32 @@ import yaml
 import math
 from copy import deepcopy
 from homography import Homography
+from utils.param_loader import ParameterLoader
 
 
 class CamCalib:
-    def __init__(self, override_intrinsics_filepath=None, override_extrinsics_filepath=None, robotname="jackal", cam_res=540):
+    """Camera calibration class for handling intrinsic and extrinsic parameters."""
+
+    def __init__(self, override_intrinsics_filepath=None, override_extrinsics_filepath=None, robotname="jackal", cam_res=None):
         self.override_intrinsics_filepath = override_intrinsics_filepath
         self.override_extrinsics_filepath = override_extrinsics_filepath
         self.robotname = robotname
         self.cam_res = cam_res
+        self.param_loader = ParameterLoader(robotname)
         self.load_params()
 
     def load_params(self):
-        if self.robotname == "jackal":
-            from jackal.ret_mats import get_cam_int_dict, get_cam_ext_dict, compute_cam_ext_T
-        elif self.robotname == "spot":
-            from spot.ret_mats import get_cam_int_dict, get_cam_ext_dict, compute_cam_ext_T
-
-        self.intrinsics_dict = get_cam_int_dict(self.override_intrinsics_filepath, self.cam_res)
-        self.raw_intrinsics_dict = get_cam_int_dict(self.override_intrinsics_filepath, self.cam_res, ret_raw=True)
+        """Load camera parameters using the unified parameter loader."""
+        self.intrinsics_dict = self.param_loader.get_cam_intrinsics_dict(
+            self.override_intrinsics_filepath, self.cam_res, ret_raw=False
+        )
+        self.raw_intrinsics_dict = self.param_loader.get_cam_intrinsics_dict(
+            self.override_intrinsics_filepath, self.cam_res, ret_raw=True
+        )
         self.img_height = self.intrinsics_dict['height']
         self.img_width = self.intrinsics_dict['width']
-        self.extrinsics_dict = get_cam_ext_dict(self.override_extrinsics_filepath)
-        self.M_ext = compute_cam_ext_T(self.extrinsics_dict)
+        self.extrinsics_dict = self.param_loader.get_cam_extrinsics_dict(self.override_extrinsics_filepath)
+        self.M_ext = self.param_loader.compute_cam_extrinsics_transform(self.extrinsics_dict)
 
     def projectWCStoPCS(self, wcs_coords, mode="skip"):
         """

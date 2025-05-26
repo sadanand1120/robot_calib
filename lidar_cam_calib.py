@@ -45,7 +45,7 @@ class LidarCamCalib:
               (0.8462, 0, 0), (0.7692, 0, 0),
               (0.6923, 0, 0), (0.6154, 0, 0)]
 
-    def __init__(self, ros_flag=True, override_cam_intrinsics_filepath=None, override_cam_extrinsics_filepath=None, robotname="jackal", override_lidar_extrinsics_filepath=None, override_lidar_actual_extrinsics_filepath=None, cam_res=540):
+    def __init__(self, ros_flag=True, override_cam_intrinsics_filepath=None, override_cam_extrinsics_filepath=None, robotname="jackal", override_lidar_extrinsics_filepath=None, override_lidar_actual_extrinsics_filepath=None, cam_res=None):
         self.ros_flag = ros_flag
         self.cam_calib = CamCalib(override_intrinsics_filepath=override_cam_intrinsics_filepath, override_extrinsics_filepath=override_cam_extrinsics_filepath, robotname=robotname, cam_res=cam_res)
         self.robotname = robotname
@@ -111,15 +111,13 @@ class LidarCamCalib:
         self.corrected_pc_pub.publish(corrected_pc_msg)
 
     def load_params(self):
-        if self.robotname == "jackal":
-            from jackal.ret_mats import get_lidar_ext_dict, get_lidar_actual_ext_dict, compute_lidar_ext_T, compute_lidar_actual_ext_T
-        elif self.robotname == "spot":
-            from spot.ret_mats import get_lidar_ext_dict, get_lidar_actual_ext_dict, compute_lidar_ext_T, compute_lidar_actual_ext_T
+        from utils.param_loader import ParameterLoader
+        param_loader = ParameterLoader(self.robotname)
 
-        self.extrinsics_dict = get_lidar_ext_dict(self.override_lidar_extrinsics_filepath)
-        self.actual_extrinsics_dict = get_lidar_actual_ext_dict(self.override_lidar_actual_extrinsics_filepath)
-        self.M_ext = compute_lidar_ext_T(self.extrinsics_dict)
-        self.actual_M_ext = compute_lidar_actual_ext_T(self.actual_extrinsics_dict)
+        self.extrinsics_dict = param_loader.get_lidar_extrinsics_dict(self.override_lidar_extrinsics_filepath)
+        self.actual_extrinsics_dict = param_loader.get_lidar_actual_extrinsics_dict(self.override_lidar_actual_extrinsics_filepath)
+        self.M_ext = param_loader.compute_lidar_extrinsics_transform(self.extrinsics_dict)
+        self.actual_M_ext = param_loader.compute_lidar_actual_extrinsics_transform(self.actual_extrinsics_dict)
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{self.robotname}/info.json"), "r") as f:
             self.info = json.load(f)
         self.img_height = self.cam_calib.img_height
