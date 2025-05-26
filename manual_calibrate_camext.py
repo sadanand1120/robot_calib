@@ -81,7 +81,8 @@ def update_overlay(cv2img, pc_bin, lcc: LidarCamCalib):
     R0 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R0', 'MyImage'))
     R1 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R1', 'MyImage'))
     R2 = cv2_val_to_actual_deg(cv2.getTrackbarPos('R2', 'MyImage'))
-    cam_M_ext = param_loader.compute_parameterized_cam_extrinsics_transform(T0, T1, T2, R0, R1, R2)
+    override_params = {'xcm': T0, 'ycm': T1, 'zcm': T2, 'r1deg': R0, 'r2deg': R1, 'r4deg': R2}
+    cam_M_ext = param_loader.compute_cam_extrinsics_transform(override_params=override_params)
     lcc.cam_calib.M_ext = cam_M_ext
     img_overlay, *_ = lcc.projectPCtoImage(pc_bin, img)
     img_overlay = cv2.resize(img_overlay, (1280, 720))

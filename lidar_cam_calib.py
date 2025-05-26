@@ -5,15 +5,12 @@ import ros_numpy
 import os
 from sensor_msgs.msg import PointCloud2, CompressedImage
 from sensor_msgs.msg import CameraInfo
-import matplotlib.pyplot as plt
 import rospy
 import time
 import json
 from cv_bridge import CvBridge
 from copy import deepcopy
-import yaml
 from scipy.interpolate import griddata
-from copy import deepcopy
 from cam_calib import CamCalib
 from homography import Homography
 
@@ -114,10 +111,11 @@ class LidarCamCalib:
         from utils.param_loader import ParameterLoader
         param_loader = ParameterLoader(self.robotname)
 
-        self.extrinsics_dict = param_loader.get_lidar_extrinsics_dict(self.override_lidar_extrinsics_filepath)
-        self.actual_extrinsics_dict = param_loader.get_lidar_actual_extrinsics_dict(self.override_lidar_actual_extrinsics_filepath)
-        self.M_ext = param_loader.compute_lidar_extrinsics_transform(self.extrinsics_dict)
-        self.actual_M_ext = param_loader.compute_lidar_actual_extrinsics_transform(self.actual_extrinsics_dict)
+        # Use the unified lidar extrinsics loading
+        self.extrinsics_dict = param_loader.get_lidar_extrinsics_dict(self.override_lidar_extrinsics_filepath, use_actual=False)
+        self.actual_extrinsics_dict = param_loader.get_lidar_extrinsics_dict(self.override_lidar_actual_extrinsics_filepath, use_actual=True)
+        self.M_ext = param_loader.compute_lidar_extrinsics_transform(self.extrinsics_dict, use_actual=False)
+        self.actual_M_ext = param_loader.compute_lidar_extrinsics_transform(self.actual_extrinsics_dict, use_actual=True)
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"{self.robotname}/info.json"), "r") as f:
             self.info = json.load(f)
         self.img_height = self.cam_calib.img_height

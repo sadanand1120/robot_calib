@@ -62,5 +62,7 @@ if __name__ == "__main__":
     cv2_img = d2p.lcc.cam_calib.rectifyRawCamImage(cv2_img)
     pc_np = np.fromfile("/home/dynamo/AMRL_Research/repos/synapse/test/000000.bin", dtype=np.float32).reshape((-1, 4))
     lidar_points, depth_arr = d2p.main(cv2_img, pc_np[:, :3], do_lidar_correction=True)
+    plt.imshow(depth_arr)
+    plt.show()
     flat_pc = lidar_points.reshape(-1).astype(np.float32)
     flat_pc.tofile("depth.bin")

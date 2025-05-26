@@ -89,10 +89,22 @@ class ParameterLoader:
             extrinsics_dict = yaml.safe_load(f)
         return extrinsics_dict
 
-    def get_lidar_extrinsics_dict(self, override_filepath: Optional[str] = None) -> Dict[str, Any]:
-        """Load lidar extrinsics parameters."""
+    def get_lidar_extrinsics_dict(self,
+                                  override_filepath: Optional[str] = None,
+                                  use_actual: bool = False) -> Dict[str, Any]:
+        """
+        Load lidar extrinsics parameters.
+
+        Args:
+            override_filepath: Path to override extrinsics file
+            use_actual: Whether to load actual lidar extrinsics (True) or ideal lidar extrinsics (False)
+
+        Returns:
+            Dictionary containing lidar extrinsics
+        """
         if override_filepath is None:
-            filepath = os.path.join(self.params_dir, self.config["lidar_extrinsics_file"])
+            config_key = "actual_lidar_extrinsics_file" if use_actual else "lidar_extrinsics_file"
+            filepath = os.path.join(self.params_dir, self.config[config_key])
         else:
             filepath = override_filepath
 
@@ -100,27 +112,44 @@ class ParameterLoader:
             extrinsics_dict = yaml.safe_load(f)
         return extrinsics_dict
 
-    def get_lidar_actual_extrinsics_dict(self, override_filepath: Optional[str] = None) -> Dict[str, Any]:
-        """Load actual lidar extrinsics parameters."""
-        if override_filepath is None:
-            filepath = os.path.join(self.params_dir, self.config["actual_lidar_extrinsics_file"])
-        else:
-            filepath = override_filepath
-
-        with open(filepath, 'r') as f:
-            extrinsics_dict = yaml.safe_load(f)
-        return extrinsics_dict
-
-    def compute_cam_extrinsics_transform(self, cam_ext_dict: Dict[str, Any]) -> np.ndarray:
+    def compute_cam_extrinsics_transform(self,
+                                         cam_ext_dict: Optional[Dict[str, Any]] = None,
+                                         override_params: Optional[Dict[str, float]] = None) -> np.ndarray:
         """
         Compute camera extrinsic transformation matrix.
 
         Args:
-            cam_ext_dict: Camera extrinsics dictionary
+            cam_ext_dict: Camera extrinsics dictionary (loaded if None)
+            override_params: Dict with keys like 'xcm', 'ycm', 'zcm', 'r1deg', 'r2deg', 'r4deg' to override parameters
 
         Returns:
             4x4 transformation matrix from WCS to CCS
         """
+        # Load default if not provided
+        if cam_ext_dict is None:
+            cam_ext_dict = self.get_cam_extrinsics_dict()
+        else:
+            cam_ext_dict = deepcopy(cam_ext_dict)  # Don't modify original
+
+        # Apply parameter overrides if provided
+        if override_params:
+            if 'xcm' in override_params:
+                cam_ext_dict['T12']['T1']['X'] = override_params['xcm']
+            if 'ycm' in override_params:
+                cam_ext_dict['T12']['T1']['Y'] = override_params['ycm']
+            if 'zcm' in override_params:
+                cam_ext_dict['T12']['T1']['Z'] = override_params['zcm']
+            if 'r1deg' in override_params:
+                cam_ext_dict['T23']['R1']['alpha'] = override_params['r1deg']
+            if 'r4deg' in override_params:
+                cam_ext_dict['T23']['R4']['alpha'] = override_params['r4deg']
+
+            # Robot-specific parameter mapping
+            if self.robotname == "jackal" and 'r2deg' in override_params:
+                cam_ext_dict['T23']['R2']['alpha'] = override_params['r2deg']
+            elif self.robotname == "spot" and 'r2deg' in override_params:
+                cam_ext_dict['T23']['R3']['alpha'] = override_params['r2deg']
+
         # Transforms from WCS to Intermediate frame
         T1 = Homography.get_std_trans(
             cx=cam_ext_dict['T12']['T1']['X'] / 100,
@@ -159,28 +188,6 @@ class ParameterLoader:
             )
             return T5 @ T4 @ T3 @ T2 @ T1
 
-    def compute_parameterized_cam_extrinsics_transform(self,
-                                                       xcm: float,
-                                                       ycm: float,
-                                                       zcm: float,
-                                                       r1deg: float,
-                                                       r2deg: float,
-                                                       r4deg: float) -> np.ndarray:
-        """Compute parameterized camera extrinsic transformation matrix."""
-        cam_ext_dict = self.get_cam_extrinsics_dict()
-        cam_ext_dict['T12']['T1']['X'] = xcm
-        cam_ext_dict['T12']['T1']['Y'] = ycm
-        cam_ext_dict['T12']['T1']['Z'] = zcm
-        cam_ext_dict['T23']['R1']['alpha'] = r1deg
-
-        if self.robotname == "jackal":
-            cam_ext_dict['T23']['R2']['alpha'] = r2deg
-        elif self.robotname == "spot":
-            cam_ext_dict['T23']['R3']['alpha'] = r2deg
-
-        cam_ext_dict['T23']['R4']['alpha'] = r4deg
-        return self.compute_cam_extrinsics_transform(cam_ext_dict)
-
     def get_camera_parameters(self, cam_ext_dict: Dict[str, Any]) -> OrderedDict:
         """Extract camera transformation parameters."""
         if self.robotname == "jackal":
@@ -202,16 +209,23 @@ class ParameterLoader:
                 "r4deg": cam_ext_dict['T23']['R4']['alpha']
             })
 
-    def compute_lidar_extrinsics_transform(self, lidar_ext_dict: Dict[str, Any]) -> np.ndarray:
+    def compute_lidar_extrinsics_transform(self,
+                                           lidar_ext_dict: Optional[Dict[str, Any]] = None,
+                                           use_actual: bool = False) -> np.ndarray:
         """
         Compute lidar extrinsic transformation matrix.
 
         Args:
-            lidar_ext_dict: Lidar extrinsics dictionary
+            lidar_ext_dict: Lidar extrinsics dictionary (loaded if None)
+            use_actual: Whether to use actual lidar extrinsics (True) or ideal lidar extrinsics (False)
 
         Returns:
             4x4 transformation matrix from WCS to VLP frame
         """
+        # Load default if not provided
+        if lidar_ext_dict is None:
+            lidar_ext_dict = self.get_lidar_extrinsics_dict(use_actual=use_actual)
+
         T1 = Homography.get_std_trans(
             cx=lidar_ext_dict['T1']['Trans1']['X'] / 100,
             cy=lidar_ext_dict['T1']['Trans1']['Y'] / 100,
@@ -235,70 +249,3 @@ class ParameterLoader:
             return T4 @ T3 @ T2 @ T1
         elif self.robotname == "spot":
             return (T2 @ T3) @ T1
-
-    def compute_lidar_actual_extrinsics_transform(self, lidar_ext_dict: Dict[str, Any]) -> np.ndarray:
-        """
-        Compute actual lidar extrinsic transformation matrix.
-
-        Args:
-            lidar_ext_dict: Actual lidar extrinsics dictionary
-
-        Returns:
-            4x4 transformation matrix from WCS to real VLP frame
-        """
-        return self.compute_lidar_extrinsics_transform(lidar_ext_dict)
-
-
-# Convenience functions for backward compatibility
-def get_cam_int_dict(override_intrinsics_filepath=None, cam_res=None, ret_raw=False, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.get_cam_intrinsics_dict(override_intrinsics_filepath, cam_res, ret_raw)
-
-
-def get_cam_ext_dict(override_extrinsics_filepath=None, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.get_cam_extrinsics_dict(override_extrinsics_filepath)
-
-
-def compute_cam_ext_T(cam_ext_dict, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.compute_cam_extrinsics_transform(cam_ext_dict)
-
-
-def compute_parameterized_cam_ext_T(xcm, ycm, zcm, r1deg, r2deg, r4deg, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.compute_parameterized_cam_extrinsics_transform(xcm, ycm, zcm, r1deg, r2deg, r4deg)
-
-
-def get_parameters_cam_ext_T(cam_ext_dict, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.get_camera_parameters(cam_ext_dict)
-
-
-def get_lidar_ext_dict(override_extrinsics_filepath=None, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.get_lidar_extrinsics_dict(override_extrinsics_filepath)
-
-
-def get_lidar_actual_ext_dict(override_extrinsics_filepath=None, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.get_lidar_actual_extrinsics_dict(override_extrinsics_filepath)
-
-
-def compute_lidar_ext_T(lidar_ext_dict, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.compute_lidar_extrinsics_transform(lidar_ext_dict)
-
-
-def compute_lidar_actual_ext_T(lidar_ext_dict, robotname="jackal"):
-    """Backward compatibility function."""
-    loader = ParameterLoader(robotname)
-    return loader.compute_lidar_actual_extrinsics_transform(lidar_ext_dict)

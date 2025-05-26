@@ -1,12 +1,11 @@
 import numpy as np
 import cv2
 np.float = np.float64  # temp fix for following import https://github.com/eric-wieser/ros_numpy/issues/37
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 from lidar_cam_calib import LidarCamCalib
 import os
 from tqdm import tqdm
 import seaborn as sns
-import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 
 
